@@ -37,19 +37,21 @@ class ProcessManager():
                 instrucoes = linha.split(' ')
                 acao = instrucoes[0]
                 id_processo = instrucoes[1]
-                posicao_relativa_memoria = int(instrucoes[2])
+                memoria = int(instrucoes[2])
 
                 if acao == "C":
                     print("Criar processo")
                     if id_processo not in self.processos:
-                        self.processos[id_processo] = Process(id_processo, posicao_relativa_memoria)
-                        numero_paginas = self.calcula_paginas_necessarias(posicao_relativa_memoria)
+                        self.processos[id_processo] = Process(id_processo, memoria)
+                        numero_paginas = self.calcula_paginas_necessarias(memoria)
                         paginas = []
                         endereco_atual = 0
                         while numero_paginas > 0:
                             if enderecos_fisicos[endereco_atual] == 0:
-                                for i in range(0, TAMANHO_PAGINA):
+                                enderecos_escrever = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
+                                for i in range(0, enderecos_escrever):
                                     enderecos_fisicos[endereco_atual + i] = id_processo
+                                    memoria -= 1
                                 paginas.append(endereco_atual / TAMANHO_PAGINA)
                                 numero_paginas -= 1
                             endereco_atual += TAMANHO_PAGINA
