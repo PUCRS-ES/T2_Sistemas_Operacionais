@@ -34,6 +34,12 @@ class ProcessManager():
             if pagina is False:
                 return index
 
+    def grava_processo_na_pagina(self, enderecos_escrever, index_pagina, id_processo):
+        for i in range(0, enderecos_escrever):
+            enderecos_fisicos[(index_pagina * TAMANHO_PAGINA) + i] = id_processo
+        self.processos[id_processo].paginas.append(index_pagina)
+        paginas_ocupadas[index_pagina] = True
+
     def carrega_processos(self):
         with open("origem.txt", "r") as arquivo:
             linhas = arquivo.readlines()
@@ -52,21 +58,15 @@ class ProcessManager():
                     if id_processo not in self.processos:
                         self.processos[id_processo] = Process(id_processo, memoria)
                         numero_paginas = self.calcula_paginas_necessarias(memoria)
-                        paginas = []
 
                         pagina_atual = 0
                         while numero_paginas > 0:
                             pagina_atual = self.proxima_pagina_livre()
 
                             enderecos_escrever = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
-                            for i in range(0, enderecos_escrever):
-                                enderecos_fisicos[(pagina_atual * TAMANHO_PAGINA) + i] = id_processo
+                            grava_processo_na_pagina(enderecos_escrever, pagina_atual, id_processo)
                             memoria -= enderecos_escrever
-                            paginas.append(pagina_atual)
                             numero_paginas -= 1
-                            paginas_ocupadas[pagina_atual] = True
-
-                        self.processos[id_processo].set_paginas(paginas)
                 elif acao == "A":
                     print("Acesso/leitura")
                     if id_processo in self.processos:
@@ -76,6 +76,8 @@ class ProcessManager():
                             print("Erro de acesso - " + id_processo + ":" + str(self.processos[id_processo].quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
                     print("Alocar/aumentar memoria")
+
+                    
                     
 
 manager = ProcessManager()
