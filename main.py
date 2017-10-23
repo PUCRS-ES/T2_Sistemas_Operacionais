@@ -58,6 +58,11 @@ class ProcessManager():
                         self.processos[id_processo].set_paginas(paginas)
                 elif acao == "A":
                     print("Acesso/leitura")
+                    if id_processo in self.processos:
+                        if memoria < self.processos[id_processo].quantidade_memoria:
+                            print("Existe um valor para posicao " + str(memoria) + " de " + id_processo)
+                        else:
+                            print("Erro de acesso - " + id_processo + ":" + str(self.processos[id_processo].quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
                     print("Alocar/aumentar memoria")
 
