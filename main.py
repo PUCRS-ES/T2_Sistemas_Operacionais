@@ -4,6 +4,9 @@ TAMANHO_PAGINA = 8
 enderecos_fisicos = [0] * 64
 enderecos_em_disco = [0] * 16
 
+QUANTIDADE_PAGINAS = len(enderecos_fisicos) / TAMANHO_PAGINA
+paginas_ocupadas = [False] * QUANTIDADE_PAGINAS
+
 class Process():
     _id = 0
     quantidade_memoria = 0
@@ -26,6 +29,11 @@ class ProcessManager():
             paginas += 1
         return paginas
 
+    def proxima_pagina_livre(self):
+        for index, pagina in enumerate(paginas_ocupadas):
+            if pagina is False:
+                return index
+
     def carrega_processos(self):
         with open("origem.txt", "r") as arquivo:
             linhas = arquivo.readlines()
@@ -45,16 +53,19 @@ class ProcessManager():
                         self.processos[id_processo] = Process(id_processo, memoria)
                         numero_paginas = self.calcula_paginas_necessarias(memoria)
                         paginas = []
-                        endereco_atual = 0
+
+                        pagina_atual = 0
                         while numero_paginas > 0:
-                            if enderecos_fisicos[endereco_atual] == 0:
-                                enderecos_escrever = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
-                                for i in range(0, enderecos_escrever):
-                                    enderecos_fisicos[endereco_atual + i] = id_processo
-                                    memoria -= 1
-                                paginas.append(endereco_atual / TAMANHO_PAGINA)
-                                numero_paginas -= 1
-                            endereco_atual += TAMANHO_PAGINA
+                            pagina_atual = self.proxima_pagina_livre()
+
+                            enderecos_escrever = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
+                            for i in range(0, enderecos_escrever):
+                                enderecos_fisicos[(pagina_atual * TAMANHO_PAGINA) + i] = id_processo
+                            memoria -= enderecos_escrever
+                            paginas.append(pagina_atual)
+                            numero_paginas -= 1
+                            paginas_ocupadas[pagina_atual] = True
+
                         self.processos[id_processo].set_paginas(paginas)
                 elif acao == "A":
                     print("Acesso/leitura")
@@ -65,7 +76,7 @@ class ProcessManager():
                             print("Erro de acesso - " + id_processo + ":" + str(self.processos[id_processo].quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
                     print("Alocar/aumentar memoria")
-
+                    
 
 manager = ProcessManager()
 manager.carrega_processos()
