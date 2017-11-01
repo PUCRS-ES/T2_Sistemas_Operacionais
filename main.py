@@ -66,7 +66,17 @@ class ProcessManager():
         paginas[paginas.index(index_pagina_memoria)] = {'disco': index_pagina_disco}
 
     def move_pagina_do_disco_para_memoria(self, index_pagina_disco, index_pagina_memoria):
-        pass
+        for i in range(0, TAMANHO_PAGINA):
+            valor_para_copiar = enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA) + i]
+            enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA) + i] = valor_para_copiar
+            enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA) + i] = 0
+        paginas_disco_ocupadas[index_pagina_disco] = False
+        paginas_ocupadas[index_pagina_memoria] = True
+        id_processo_movido = enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA)]
+
+        # Atualiza a lista de paginas do processo para indicar que a pagina foi movida para o disco
+        paginas = self.processos[id_processo_movido].paginas
+        paginas[paginas.index({'disco': index_pagina_disco})] = index_pagina_memoria
 
     def grava_processo_na_pagina(self, pos_inicial, numero_enderecos, index_pagina, id_processo):
         for i in range(pos_inicial, numero_enderecos):
@@ -115,10 +125,30 @@ class ProcessManager():
                 elif acao == "A":
                     print("Acesso/leitura")
                     if id_processo in self.processos:
-                        if memoria < self.processos[id_processo].quantidade_memoria:
-                            print("Existe um valor para posicao " + str(memoria) + " de " + id_processo)
+                        processo_atual = self.processos[id_processo]
+                        pagina_para_acessar = int(memoria / TAMANHO_PAGINA)
+
+                        # Uma pagina para o processo existe
+                        if pagina_para_acessar < len(processo_atual.paginas):
+
+                            # Apesar da pagina existir, ela esta em disco e nao em memoria.
+                            # Precisamos liberar espaco na memoria e traze-la do disco para memoria.
+                            if type(processo_atual.paginas[pagina_para_acessar]) is dict:
+                                print("Memoria RAM antes do page fault: ", enderecos_fisicos)
+                                print("Disco antes do page fault: ", enderecos_em_disco)
+
+				pagina_origem = self.get_pagina_usando_least_recent_used()
+				pagina_destino = self.proxima_pagina_disco_livre()
+				self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
+
+				pagina_destino = pagina_origem
+				pagina_origem = processo_atual.paginas[pagina_para_acessar]['disco']
+				self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
+
+                                print("Memoria RAM depois do page fault: ", enderecos_fisicos)
+                                print("Disco depois do page fault: ", enderecos_em_disco)
                         else:
-                            print("Erro de acesso - " + id_processo + ":" + str(self.processos[id_processo].quantidade_memoria) + ":" + str(memoria))
+                            print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
                     print("Alocar/aumentar memoria")
                     if id_processo in self.processos:
@@ -154,8 +184,6 @@ class ProcessManager():
                                 print("Disco depois do page fault: ", enderecos_em_disco)
 
                             self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
-                            
-                            # Continuar em "A p1 1"
 
                         memoria_antes = self.processos[id_processo].quantidade_memoria
                         self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
