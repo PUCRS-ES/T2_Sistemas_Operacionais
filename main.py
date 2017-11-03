@@ -25,6 +25,28 @@ class ProcessManager():
     # Assumindo que toda vez que lemos uma instrucao/linha gastamos 1 seg
     tempo_geral = 0
 
+    # estado deve ser um string (antes ou depois)
+    def pretty_print_ram_E_disco(self, estado):
+        print("Memoria RAM " + estado + " do page fault: ")
+        self.pretty_print_ram()
+        print("Disco " + estado + " do page fault: ")
+        self.pretty_print_disco()
+
+    def pretty_print_ram(self):
+        for pagina_atual in range(0, QUANTIDADE_PAGINAS):
+            saida = "Pagina " + str(pagina_atual) + ": "
+            for posicao_na_pagina in range(0, TAMANHO_PAGINA):
+                saida += str(enderecos_fisicos[(pagina_atual * TAMANHO_PAGINA) + posicao_na_pagina]) + " "
+            print(saida)
+
+    def pretty_print_disco(self):
+        quantidade_paginas_disco = int(len(enderecos_em_disco) / TAMANHO_PAGINA)
+        for pagina_atual in range(0, quantidade_paginas_disco):
+            saida = "Pagina " + str(pagina_atual) + ": "
+            for posicao_na_pagina in range(0, TAMANHO_PAGINA):
+                saida += str(enderecos_em_disco[(pagina_atual * TAMANHO_PAGINA) + posicao_na_pagina]) + " "
+            print(saida)
+
     def calcula_paginas_necessarias(self, quantidade_enderecos):
         paginas = int(quantidade_enderecos / TAMANHO_PAGINA)
         if (quantidade_enderecos % TAMANHO_PAGINA) > 0:
@@ -74,7 +96,7 @@ class ProcessManager():
         paginas_ocupadas[index_pagina_memoria] = True
         id_processo_movido = enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA)]
 
-        # Atualiza a lista de paginas do processo para indicar que a pagina foi movida para o disco
+        # Atualiza a lista de paginas do processo para indicar que a pagina foi movida para a memoria
         paginas = self.processos[id_processo_movido].paginas
         paginas[paginas.index({'disco': index_pagina_disco})] = index_pagina_memoria
 
@@ -134,8 +156,7 @@ class ProcessManager():
                             # Apesar da pagina existir, ela esta em disco e nao em memoria.
                             # Precisamos liberar espaco na memoria e traze-la do disco para memoria.
                             if type(processo_atual.paginas[pagina_para_acessar]) is dict:
-                                print("Memoria RAM antes do page fault: ", enderecos_fisicos)
-                                print("Disco antes do page fault: ", enderecos_em_disco)
+                                self.pretty_print_ram_E_disco("antes")
 
 				pagina_origem = self.get_pagina_usando_least_recent_used()
 				pagina_destino = self.proxima_pagina_disco_livre()
@@ -145,8 +166,12 @@ class ProcessManager():
 				pagina_origem = processo_atual.paginas[pagina_para_acessar]['disco']
 				self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
 
-                                print("Memoria RAM depois do page fault: ", enderecos_fisicos)
-                                print("Disco depois do page fault: ", enderecos_em_disco)
+                                self.pretty_print_ram_E_disco("depois")
+
+                                # Linha "A p1 1" OK! Continuar (1) criando funcoes pretty-print para imprimir
+                                # RAM e disco e (2) da linha "A p2 20" (nao iniciada) para frente.
+                                # Colocar um breakpoint aqui
+
                         else:
                             print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
@@ -176,12 +201,9 @@ class ProcessManager():
                             # Tira uma pagina da memoria, movendo-a para o disco (se houver espaco)
                             if pagina_atual is None:
                                 pagina_atual = self.get_pagina_usando_least_recent_used()
-                                print("Memoria RAM antes do page fault: ", enderecos_fisicos)
-                                print("Disco antes do page fault: ", enderecos_em_disco)
+                                self.pretty_print_ram_E_disco("antes")
                                 self.move_pagina_da_memoria_para_disco(pagina_atual, self.proxima_pagina_disco_livre())
-
-                                print("Memoria RAM depois do page fault: ", enderecos_fisicos)
-                                print("Disco depois do page fault: ", enderecos_em_disco)
+                                self.pretty_print_ram_E_disco("depois")
 
                             self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
 
