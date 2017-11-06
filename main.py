@@ -123,7 +123,7 @@ class ProcessManager():
                 # Ignora 5 primeiras linhas que nao sao instrucoes de processos
                 if index < 5:
                     continue
-                
+
                 instrucoes = linha.split(' ')
                 acao = instrucoes[0]
                 id_processo = instrucoes[1]
@@ -158,24 +158,20 @@ class ProcessManager():
                             if type(processo_atual.paginas[pagina_para_acessar]) is dict:
                                 self.pretty_print_ram_E_disco("antes")
 
-				pagina_origem = self.get_pagina_usando_least_recent_used()
-				pagina_destino = self.proxima_pagina_disco_livre()
-				self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
-
-				pagina_destino = pagina_origem
-				pagina_origem = processo_atual.paginas[pagina_para_acessar]['disco']
-				self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
+                                pagina_origem = self.get_pagina_usando_least_recent_used()
+                                pagina_destino = self.proxima_pagina_disco_livre()
+                                self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
+                                
+                                pagina_destino = pagina_origem
+                                pagina_origem = processo_atual.paginas[pagina_para_acessar]['disco']
+                                self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
 
                                 self.pretty_print_ram_E_disco("depois")
-
-                                # Linha "A p1 1" OK! Continuar (1) criando funcoes pretty-print para imprimir
-                                # RAM e disco e (2) da linha "A p2 20" (nao iniciada) para frente.
-                                # Colocar um breakpoint aqui
-
                         else:
                             print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
                     print("Alocar/aumentar memoria")
+
                     if id_processo in self.processos:
                         ultima_pagina = self.processos[id_processo].paginas[-1:][0]
                         memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
@@ -198,12 +194,19 @@ class ProcessManager():
                             # Agora devemos buscar a proxima pagina livre, e gravar os dados restantes nela
                             pagina_atual = self.proxima_pagina_livre()
                             
-                            # Tira uma pagina da memoria, movendo-a para o disco (se houver espaco)
+                            # Tira uma pagina da memoria, movendo-a para o disco (se houver espaco no disco)
                             if pagina_atual is None:
-                                pagina_atual = self.get_pagina_usando_least_recent_used()
-                                self.pretty_print_ram_E_disco("antes")
-                                self.move_pagina_da_memoria_para_disco(pagina_atual, self.proxima_pagina_disco_livre())
-                                self.pretty_print_ram_E_disco("depois")
+                                
+                                pagina_disco = self.proxima_pagina_disco_livre()
+                                if pagina_disco is None:
+                                    print("Não tem mais memória")
+                                    continue
+                                else:
+                                    pagina_atual = self.get_pagina_usando_least_recent_used()
+                                    self.pretty_print_ram_E_disco("antes")
+
+                                    self.move_pagina_da_memoria_para_disco(pagina_atual, self.proxima_pagina_disco_livre())
+                                    self.pretty_print_ram_E_disco("depois")
 
                             self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
 
