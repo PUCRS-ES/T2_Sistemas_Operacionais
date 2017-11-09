@@ -125,6 +125,21 @@ class ProcessManager():
                 return (TAMANHO_PAGINA - index)
         return 0
 
+    def criar_processo(self, id_processo, memoria):
+        print("Criar processo: C " + id_processo + " " + str(memoria))
+        if id_processo not in self.processos:
+            self.processos[id_processo] = Process(id_processo, memoria)
+            numero_paginas = self.calcula_paginas_necessarias(memoria)
+
+            pagina_atual = 0
+            while numero_paginas > 0:
+                pagina_atual = self.proxima_pagina_livre()
+
+                numero_enderecos = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
+                self.grava_processo_na_pagina(0, numero_enderecos, pagina_atual, id_processo)
+                memoria -= numero_enderecos
+                numero_paginas -= 1
+
     def carrega_processos(self):
         with open("origem.txt", "r") as arquivo:
             linhas = arquivo.readlines()
@@ -162,6 +177,24 @@ class ProcessManager():
                 raise Exception('Entrada invalida para quantidade de enderecos em disco.')
 
             linhas = linhas[5:]
+
+
+            # Se for modo aleatorio, remove a criacao de processos da lista de instrucoes e cria eles
+            if SEQUENCIAL is False:
+                i = 0
+                while i < len(linhas):
+                    linha = linhas[i]
+                    if linha[0] == "C":
+                        linhas.pop(i)
+                        instrucoes = linha.split(' ')
+                        acao = instrucoes[0]
+                        id_processo = instrucoes[1]
+                        memoria = int(instrucoes[2])
+                        self.tempo_geral += 1
+                        self.criar_processo(id_processo, memoria)
+                    else:
+                        i += 1
+
             for index, linha in enumerate(linhas):
                 instrucoes = linha.split(' ')
                 acao = instrucoes[0]
@@ -170,19 +203,7 @@ class ProcessManager():
                 self.tempo_geral += 1
 
                 if acao == "C":
-                    print("Criar processo: " + linha)
-                    if id_processo not in self.processos:
-                        self.processos[id_processo] = Process(id_processo, memoria)
-                        numero_paginas = self.calcula_paginas_necessarias(memoria)
-
-                        pagina_atual = 0
-                        while numero_paginas > 0:
-                            pagina_atual = self.proxima_pagina_livre()
-
-                            numero_enderecos = TAMANHO_PAGINA if memoria > TAMANHO_PAGINA else memoria
-                            self.grava_processo_na_pagina(0, numero_enderecos, pagina_atual, id_processo)
-                            memoria -= numero_enderecos
-                            numero_paginas -= 1
+                    self.criar_processo(id_processo, memoria)
                 elif acao == "A":
                     print("Acesso/leitura: " + linha)
                     if id_processo in self.processos:
