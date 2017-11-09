@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from random import randint
+from sys import version
+
+TEXTO = "Pressione ENTER para a proxima instrucao"
 
 SEQUENCIAL = True
 ALGORITMO_LRU = True
@@ -167,7 +170,7 @@ class ProcessManager():
                 self.tempo_geral += 1
 
                 if acao == "C":
-                    print("Criar processo")
+                    print("Criar processo: " + linha)
                     if id_processo not in self.processos:
                         self.processos[id_processo] = Process(id_processo, memoria)
                         numero_paginas = self.calcula_paginas_necessarias(memoria)
@@ -181,7 +184,7 @@ class ProcessManager():
                             memoria -= numero_enderecos
                             numero_paginas -= 1
                 elif acao == "A":
-                    print("Acesso/leitura")
+                    print("Acesso/leitura: " + linha)
                     if id_processo in self.processos:
                         processo_atual = self.processos[id_processo]
                         pagina_para_acessar = int(memoria / TAMANHO_PAGINA)
@@ -209,8 +212,7 @@ class ProcessManager():
                         else:
                             print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
                 elif acao == "M":
-                    print("Alocar/aumentar memoria")
-
+                    print("Alocar/aumentar memoria: " + linha)
                     if id_processo in self.processos:
                         ultima_pagina = self.processos[id_processo].paginas[-1:][0]
                         memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
@@ -254,6 +256,11 @@ class ProcessManager():
 
                         memoria_antes = self.processos[id_processo].quantidade_memoria
                         self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
+
+                if version[0] == "2":
+                    raw_input(TEXTO)
+                elif version[0] == "3":
+                    input(TEXTO)
 
 manager = ProcessManager()
 manager.carrega_processos()
