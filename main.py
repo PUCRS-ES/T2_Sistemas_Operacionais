@@ -4,17 +4,21 @@ from sys import version
 
 TEXTO = "Pressione ENTER para a proxima instrucao"
 
+# Estas informacoes serao lidas a partir de um arquivo
 SEQUENCIAL = True
 ALGORITMO_LRU = True
 TAMANHO_PAGINA = 8
 enderecos_fisicos = [0] * 64
 enderecos_em_disco = [0] * 16
 
+# Outras variaveis auxiliares calculadas em funcao do arquivo de origem
 QUANTIDADE_PAGINAS = int(len(enderecos_fisicos) / TAMANHO_PAGINA)
 paginas_ocupadas = [False] * QUANTIDADE_PAGINAS
 pagina_acessada_em = [0] * QUANTIDADE_PAGINAS
 paginas_disco_ocupadas = [False] * int(len(enderecos_em_disco) / TAMANHO_PAGINA)
 
+# Depois das definicoes iniciais do arquivo lido, cada linha dele
+# representa uma acao sobre um processo
 class Process():
     _id = 0
     quantidade_memoria = 0
@@ -26,18 +30,24 @@ class Process():
         self.paginas = []
 
 
+# Classe principal que gerencia os processos. Usando anti-pattern god-object
+# na falta de outros objetos diversificados
 class ProcessManager():
+    # Poderia tambem usar uma lista, mas se tivermos muitos processos um
+    # um dicionario tem acesso mais rapido
     processos = { }
+
     # Assumindo que toda vez que lemos uma instrucao/linha gastamos 1 seg
     tempo_geral = 0
 
-    # estado deve ser um string (antes ou depois)
+    # estado deve ser uma string ("antes" ou "depois" preferencialmente)
     def pretty_print_ram_E_disco(self, estado):
         print("Memoria RAM " + estado + " do page fault: ")
         self.pretty_print_ram()
         print("Disco " + estado + " do page fault: ")
         self.pretty_print_disco()
 
+    # imprime a memoria de forma legivel (uma pagina por linha)
     def pretty_print_ram(self):
         for pagina_atual in range(0, QUANTIDADE_PAGINAS):
             saida = "Pagina " + str(pagina_atual) + ": "
@@ -45,6 +55,7 @@ class ProcessManager():
                 saida += str(enderecos_fisicos[(pagina_atual * TAMANHO_PAGINA) + posicao_na_pagina]) + " "
             print(saida)
 
+    # imprime a memoria do disco de forma legivel (uma pagina por linha)
     def pretty_print_disco(self):
         quantidade_paginas_disco = int(len(enderecos_em_disco) / TAMANHO_PAGINA)
         for pagina_atual in range(0, quantidade_paginas_disco):
@@ -53,24 +64,28 @@ class ProcessManager():
                 saida += str(enderecos_em_disco[(pagina_atual * TAMANHO_PAGINA) + posicao_na_pagina]) + " "
             print(saida)
 
+    # calcula quantidade de paginas necessarias para criar um processo
     def calcula_paginas_necessarias(self, quantidade_enderecos):
         paginas = int(quantidade_enderecos / TAMANHO_PAGINA)
         if (quantidade_enderecos % TAMANHO_PAGINA) > 0:
             paginas += 1
         return paginas
 
+    # retorna o indice da proxima pagina livre na memoria, ou null se todas estiverem ocupadas
     def proxima_pagina_livre(self):
         for index, pagina in enumerate(paginas_ocupadas):
             if pagina is False:
                 return index
         return None
 
+    # retorna o indice da proxima pagina livre do disco, ou null se todas estiverem ocupadas
     def proxima_pagina_disco_livre(self):
         for index, pagina in enumerate(paginas_disco_ocupadas):
             if pagina is False:
                 return index
         return None
 
+    # retorna o indice da pagina que sera retirada da memoria quando ocorrer um page fault
     def get_pagina_usando_least_recent_used(self):
         tempo_pagina_escolhida = 999999
         index_pagina_escolhida = None
@@ -80,6 +95,7 @@ class ProcessManager():
                 index_pagina_escolhida = index
         return index_pagina_escolhida
 
+    # escolhe uma pagina aleatoria para ser retirada da memoria no caso de um page fault
     def get_pagina_aleatoria(self, max_page_index):
         return randint(0, max_page_index)
 
@@ -88,11 +104,14 @@ class ProcessManager():
             valor_para_copiar = enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA) + i]
             enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA) + i] = valor_para_copiar
             enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA) + i] = 0
+        # atualiza nas listas de controle que a pagina esta livre na memoria, e ocupada no disco
         paginas_ocupadas[index_pagina_memoria] = False
         paginas_disco_ocupadas[index_pagina_disco] = True
         id_processo_movido = enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA)]
 
         # Atualiza a lista de paginas do processo para indicar que a pagina foi movida para o disco
+        # Ao inves de um index que aponta para uma posicao na memoria, teremos um dicionario, que
+        # que aponta para uma pagina do disco
         paginas = self.processos[id_processo_movido].paginas
         paginas[paginas.index(index_pagina_memoria)] = {'disco': index_pagina_disco}
 
@@ -101,6 +120,7 @@ class ProcessManager():
             valor_para_copiar = enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA) + i]
             enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA) + i] = valor_para_copiar
             enderecos_em_disco[(index_pagina_disco * TAMANHO_PAGINA) + i] = 0
+        # atualiza nas listas de controle que a pagina esta livre no disco, e ocupada na memoria
         paginas_disco_ocupadas[index_pagina_disco] = False
         paginas_ocupadas[index_pagina_memoria] = True
         id_processo_movido = enderecos_fisicos[(index_pagina_memoria * TAMANHO_PAGINA)]
@@ -109,10 +129,12 @@ class ProcessManager():
         paginas = self.processos[id_processo_movido].paginas
         paginas[paginas.index({'disco': index_pagina_disco})] = index_pagina_memoria
 
+    # Grava efetivamente dados na memoria
     def grava_processo_na_pagina(self, pos_inicial, numero_enderecos, index_pagina, id_processo):
         for i in range(pos_inicial, numero_enderecos):
             enderecos_fisicos[(index_pagina * TAMANHO_PAGINA) + i] = id_processo
         
+        # Registra que a pagina pertence ao processo "id_processo" agora, e marca ela como ocupada
         if index_pagina not in self.processos[id_processo].paginas:
             self.processos[id_processo].paginas.append(index_pagina)
         paginas_ocupadas[index_pagina] = True
@@ -143,6 +165,10 @@ class ProcessManager():
     def carrega_processos(self):
         with open("origem.txt", "r") as arquivo:
             linhas = arquivo.readlines()
+            
+            ############### Efetua a leitura das 5 linhas iniciais do arquivo.
+            # Essas linhas possuem apenas configuracoes da memoria e disco, mas
+            #nao acoes sobre os processos ###############
             for index, linha in enumerate(linhas):
                 linhas[index] = linhas[index].strip()
             setup = linhas[:5]
@@ -177,6 +203,7 @@ class ProcessManager():
                 raise Exception('Entrada invalida para quantidade de enderecos em disco.')
 
             linhas = linhas[5:]
+            ############### Fim da leitura das 5 linhas iniciais ###############
 
 
             # Se for modo aleatorio, remove a criacao de processos da lista de instrucoes e cria eles
@@ -195,6 +222,7 @@ class ProcessManager():
                     else:
                         i += 1
 
+            # Executa as acoes sobre os processos (inclusive criar, se sequencial)
             for index, linha in enumerate(linhas):
                 instrucoes = linha.split(' ')
                 acao = instrucoes[0]
@@ -204,13 +232,17 @@ class ProcessManager():
 
                 if acao == "C":
                     self.criar_processo(id_processo, memoria)
+                
+                # Acessa a memoria
                 elif acao == "A":
                     print("Acesso/leitura: " + linha)
+                    
+                    # Se o processo nao existe, ignora
                     if id_processo in self.processos:
                         processo_atual = self.processos[id_processo]
                         pagina_para_acessar = int(memoria / TAMANHO_PAGINA)
 
-                        # Uma pagina para o processo existe
+                        # A pagina para o processo existe
                         if pagina_para_acessar < len(processo_atual.paginas):
 
                             # Apesar da pagina existir, ela esta em disco e nao em memoria.
@@ -218,6 +250,7 @@ class ProcessManager():
                             if type(processo_atual.paginas[pagina_para_acessar]) is dict:
                                 self.pretty_print_ram_E_disco("antes")
 
+                                # Decide como vai liberar uma pagina da memoria
                                 if ALGORITMO_LRU:
                                     pagina_origem = self.get_pagina_usando_least_recent_used()
                                 else:
@@ -230,19 +263,28 @@ class ProcessManager():
                                 self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
 
                                 self.pretty_print_ram_E_disco("depois")
+                        # A pagina nao existe. Informa o usuario
                         else:
                             print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
+                
+                # Aloca mais memoria para o processo
                 elif acao == "M":
                     print("Alocar/aumentar memoria: " + linha)
+                    
+                    # Se o processo nao existe, ignora
                     if id_processo in self.processos:
+                        
+                        # Obtem a ultima pagina do processo, e quanto de memoria (bytes) ainda tem disponivel nela
                         ultima_pagina = self.processos[id_processo].paginas[-1:][0]
                         memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
+                        
+                        # Se a quantidade de memoria solicitada for menor que a quantidade disponível, só escreve na mesma pagina
                         if memoria < memoria_disponivel:
                             pos_inicial = TAMANHO_PAGINA - memoria_disponivel
                             self.grava_processo_na_pagina(pos_inicial, memoria + pos_inicial, ultima_pagina, id_processo)
                         else:
                             
-                            # Se ainda tivermos algum espaco disponivel na ultima_pagina, devemos primeiro
+                            # Se ainda tivermos algum espaco disponivel na ultima_pagina, devemos PRIMEIRO
                             # preencher todo esse espaço, e DEPOIS escrever na nova pagina
                             if memoria_disponivel > 0:
                                 pos_inicial = TAMANHO_PAGINA - memoria_disponivel
@@ -256,7 +298,7 @@ class ProcessManager():
                             # Agora devemos buscar a proxima pagina livre, e gravar os dados restantes nela
                             pagina_atual = self.proxima_pagina_livre()
                             
-                            # Tira uma pagina da memoria, movendo-a para o disco (se houver espaco no disco)
+                            # Se nao houver mais paginas livres na memoria, remove uma movendo-a para o disco
                             if pagina_atual is None:
                                 
                                 pagina_disco_livre = self.proxima_pagina_disco_livre()
@@ -264,6 +306,7 @@ class ProcessManager():
                                     print("Não tem mais memória")
                                     continue
                                 else:
+                                    # Decide como vai liberar uma pagina da memoria
                                     if ALGORITMO_LRU:
                                         pagina_atual = self.get_pagina_usando_least_recent_used()
                                     else:
@@ -278,6 +321,7 @@ class ProcessManager():
                         memoria_antes = self.processos[id_processo].quantidade_memoria
                         self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
 
+                # Permite acompanhar passo-a-passo cada acao com os processos
                 if version[0] == "2":
                     raw_input(TEXTO)
                 elif version[0] == "3":
