@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from random import randint
 
 SEQUENCIAL = True
 ALGORITMO_LRU = True
@@ -75,6 +76,9 @@ class ProcessManager():
                 tempo_pagina_escolhida = tempo_atual
                 index_pagina_escolhida = index
         return index_pagina_escolhida
+
+    def get_pagina_aleatoria(self, max_page_index):
+        return randint(0, max_page_index)
 
     def move_pagina_da_memoria_para_disco(self, index_pagina_memoria, index_pagina_disco):
         for i in range(0, TAMANHO_PAGINA):
@@ -190,7 +194,10 @@ class ProcessManager():
                             if type(processo_atual.paginas[pagina_para_acessar]) is dict:
                                 self.pretty_print_ram_E_disco("antes")
 
-                                pagina_origem = self.get_pagina_usando_least_recent_used()
+                                if ALGORITMO_LRU:
+                                    pagina_origem = self.get_pagina_usando_least_recent_used()
+                                else:
+                                    pagina_origem = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
                                 pagina_destino = self.proxima_pagina_disco_livre()
                                 self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
                                 
@@ -234,7 +241,10 @@ class ProcessManager():
                                     print("Não tem mais memória")
                                     continue
                                 else:
-                                    pagina_atual = self.get_pagina_usando_least_recent_used()
+                                    if ALGORITMO_LRU:
+                                        pagina_atual = self.get_pagina_usando_least_recent_used()
+                                    else:
+                                        pagina_atual = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
                                     self.pretty_print_ram_E_disco("antes")
 
                                     self.move_pagina_da_memoria_para_disco(pagina_atual, pagina_disco_livre)
