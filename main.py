@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+SEQUENCIAL = True
+ALGORITMO_LRU = True
 TAMANHO_PAGINA = 8
 enderecos_fisicos = [0] * 64
 enderecos_em_disco = [0] * 16
@@ -120,10 +122,40 @@ class ProcessManager():
         with open("origem.txt", "r") as arquivo:
             linhas = arquivo.readlines()
             for index, linha in enumerate(linhas):
-                # Ignora 5 primeiras linhas que nao sao instrucoes de processos
-                if index < 5:
-                    continue
+                linhas[index] = linhas[index].strip()
+            setup = linhas[:5]
 
+            if setup[0] == "0" or setup[0] == "sequencial" or setup[0] == "s":
+                SEQUENCIAL = True
+            elif setup[0] == "1" or setup[0] == "aleatorio" or setup[0] == "a":
+                SEQUENCIAL = False
+            else:
+                raise Exception('Entrada invalida para sequencial/aleatorio.')
+
+            if setup[1] == "lru":
+                ALGORITMO_LRU = True
+            elif setup[1] == "aleatorio":
+                ALGORITMO_LRU = False
+            else:
+                raise Exception('Entrada invalida para algoritmo de troca de paginas.')
+
+            try:
+                TAMANHO_PAGINA = int(setup[2])
+            except Exception:
+                raise Exception('Entrada invalida para tamanho da pagina.')
+
+            try:
+                enderecos_fisicos = [0] * int(setup[3])
+            except Exception:
+                raise Exception('Entrada invalida para quantidade de enderecos fisicos (RAM).')
+
+            try:
+                enderecos_em_disco = [0] * int(setup[4])
+            except Exception:
+                raise Exception('Entrada invalida para quantidade de enderecos em disco.')
+
+            linhas = linhas[5:]
+            for index, linha in enumerate(linhas):
                 instrucoes = linha.split(' ')
                 acao = instrucoes[0]
                 id_processo = instrucoes[1]
@@ -197,15 +229,15 @@ class ProcessManager():
                             # Tira uma pagina da memoria, movendo-a para o disco (se houver espaco no disco)
                             if pagina_atual is None:
                                 
-                                pagina_disco = self.proxima_pagina_disco_livre()
-                                if pagina_disco is None:
+                                pagina_disco_livre = self.proxima_pagina_disco_livre()
+                                if pagina_disco_livre is None:
                                     print("Não tem mais memória")
                                     continue
                                 else:
                                     pagina_atual = self.get_pagina_usando_least_recent_used()
                                     self.pretty_print_ram_E_disco("antes")
 
-                                    self.move_pagina_da_memoria_para_disco(pagina_atual, self.proxima_pagina_disco_livre())
+                                    self.move_pagina_da_memoria_para_disco(pagina_atual, pagina_disco_livre)
                                     self.pretty_print_ram_E_disco("depois")
 
                             self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
