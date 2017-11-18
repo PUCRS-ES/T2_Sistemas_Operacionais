@@ -30,21 +30,20 @@ class Process():
         self.paginas = []
 
 
-# Classe principal que gerencia os processos. Usando anti-pattern god-object
-# na falta de outros objetos diversificados
+# Classe principal que gerencia os processos
 class ProcessManager():
-    # Poderia tambem usar uma lista, mas se tivermos muitos processos um
+    # Poderia tambem usar uma lista, mas se tivermos muitos processos
     # um dicionario tem acesso mais rapido
     processos = { }
 
     # Assumindo que toda vez que lemos uma instrucao/linha gastamos 1 seg
     tempo_geral = 0
 
-    # estado deve ser uma string ("antes" ou "depois" preferencialmente)
-    def pretty_print_ram_E_disco(self, estado):
-        print("Memoria RAM " + estado + " do page fault: ")
+    # string opcional para descrever os page faults ("antes" ou "depois" por ex)
+    def pretty_print_ram_E_disco(self, estado=""):
+        print("Memoria RAM " + estado)
         self.pretty_print_ram()
-        print("Disco " + estado + " do page fault: ")
+        print("Disco " + estado)
         self.pretty_print_disco()
 
     # imprime a memoria de forma legivel (uma pagina por linha)
@@ -87,6 +86,8 @@ class ProcessManager():
 
     # retorna o indice da pagina que sera retirada da memoria quando ocorrer um page fault
     def get_pagina_usando_least_recent_used(self):
+        print("Pagina acessada em: ")
+        print(pagina_acessada_em)
         tempo_pagina_escolhida = 999999
         index_pagina_escolhida = None
         for index, tempo_atual in enumerate(pagina_acessada_em):
@@ -241,20 +242,28 @@ class ProcessManager():
                     if id_processo in self.processos:
                         processo_atual = self.processos[id_processo]
                         pagina_para_acessar = int(memoria / TAMANHO_PAGINA)
+                        print("Paginas de " + id_processo + " :")
+                        print(processo_atual.paginas)
+                        print("Pagina desejada: " + str(pagina_para_acessar) + " (logica)")
 
-                        # A pagina para o processo existe
-                        if pagina_para_acessar < len(processo_atual.paginas):
+                        # A pagina para o processo existe E a memoria esta dentro do limite do processo
+                        if pagina_para_acessar < len(processo_atual.paginas) and memoria < processo_atual.quantidade_memoria:
+                            print("Pagina desejada: " + str(processo_atual.paginas[pagina_para_acessar]) + " (fisica)")
 
                             # Apesar da pagina existir, ela esta em disco e nao em memoria.
                             # Precisamos liberar espaco na memoria e traze-la do disco para memoria.
                             if type(processo_atual.paginas[pagina_para_acessar]) is dict:
-                                self.pretty_print_ram_E_disco("antes")
+                                print("---------------------------------")
+                                self.pretty_print_ram_E_disco("antes do page fault: ")
+                                print("---------------------------------")
 
                                 # Decide como vai liberar uma pagina da memoria
                                 if ALGORITMO_LRU:
                                     pagina_origem = self.get_pagina_usando_least_recent_used()
                                 else:
                                     pagina_origem = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
+                                print("Pagina escolhida: " + str(pagina_origem) + " (fisica)")
+                                print("---------------------------------")
                                 pagina_destino = self.proxima_pagina_disco_livre()
                                 self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
                                 
@@ -262,7 +271,12 @@ class ProcessManager():
                                 pagina_origem = processo_atual.paginas[pagina_para_acessar]['disco']
                                 self.move_pagina_do_disco_para_memoria(pagina_origem, pagina_destino)
 
-                                self.pretty_print_ram_E_disco("depois")
+                                self.pretty_print_ram_E_disco("depois do page fault: ")
+                                print("---------------------------------")
+                            #else:
+                            #    # Como a pagina foi acessada, devemos atualizar o instante de tempo
+                            #    # do ultimo acesso. Importante para o calculo do LRU.
+                            #    pagina_acessada_em[pagina_para_acessar] = self.tempo_geral
                         # A pagina nao existe. Informa o usuario
                         else:
                             print("Erro de acesso - " + id_processo + ":" + str(processo_atual.quantidade_memoria) + ":" + str(memoria))
@@ -311,10 +325,15 @@ class ProcessManager():
                                         pagina_atual = self.get_pagina_usando_least_recent_used()
                                     else:
                                         pagina_atual = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
-                                    self.pretty_print_ram_E_disco("antes")
+                                    print("---------------------------------")
+                                    print("Pagina escolhida: " + str(pagina_atual) + " (fisica)")
+                                    print("---------------------------------")
+                                    self.pretty_print_ram_E_disco("antes do page fault: ")
+                                    print("---------------------------------")
 
                                     self.move_pagina_da_memoria_para_disco(pagina_atual, pagina_disco_livre)
-                                    self.pretty_print_ram_E_disco("depois")
+                                    self.pretty_print_ram_E_disco("depois do page fault: ")
+                                    print("---------------------------------")
 
                             self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
 
@@ -322,10 +341,12 @@ class ProcessManager():
                         self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
 
                 # Permite acompanhar passo-a-passo cada acao com os processos
+                self.pretty_print_ram_E_disco()
                 if version[0] == "2":
                     raw_input(TEXTO)
                 elif version[0] == "3":
                     input(TEXTO)
+                print("\n\n\n")
 
 manager = ProcessManager()
 manager.carrega_processos()
