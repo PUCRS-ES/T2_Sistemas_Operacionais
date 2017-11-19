@@ -142,6 +142,10 @@ class ProcessManager():
         pagina_acessada_em[index_pagina] = self.tempo_geral
 
     def quantidade_de_enderecos_livres_na_pagina(self, index_pagina):
+        if type(index_pagina) is dict:
+            import pdb
+            pdb.set_trace()
+            a = 10
         regiao = enderecos_fisicos[index_pagina * TAMANHO_PAGINA : (index_pagina + 1) * TAMANHO_PAGINA]
         for index, valor in enumerate(regiao):
             if valor == 0:
@@ -207,8 +211,8 @@ class ProcessManager():
             ############### Fim da leitura das 5 linhas iniciais ###############
 
 
-            # Se for modo aleatorio, remove a criacao de processos da lista de instrucoes e cria eles
             if SEQUENCIAL is False:
+                # Se for modo aleatorio, remove a criacao de processos da lista de instrucoes e cria eles
                 i = 0
                 while i < len(linhas):
                     linha = linhas[i]
@@ -222,6 +226,12 @@ class ProcessManager():
                         self.criar_processo(id_processo, memoria)
                     else:
                         i += 1
+
+                # Embaralha as instrucoes para criar instrucoes aleatorias
+                for index, linha in enumerate(linhas):
+                    posicao_aleatoria = randint(0, len(linhas) - 1)
+                    instrucao_retirada = linhas.pop(posicao_aleatoria)
+                    linhas.append(instrucao_retirada)
 
             # Executa as acoes sobre os processos (inclusive criar, se sequencial)
             for index, linha in enumerate(linhas):
@@ -265,6 +275,10 @@ class ProcessManager():
                                 print("Pagina escolhida: " + str(pagina_origem) + " (fisica)")
                                 print("---------------------------------")
                                 pagina_destino = self.proxima_pagina_disco_livre()
+                                if pagina_destino is None:
+                                    import pdb
+                                    pdb.set_trace()
+                                    a = 10
                                 self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
                                 
                                 pagina_destino = pagina_origem
@@ -318,6 +332,7 @@ class ProcessManager():
                                 pagina_disco_livre = self.proxima_pagina_disco_livre()
                                 if pagina_disco_livre is None:
                                     print("Não tem mais memória")
+                                    print("\n\n\n")
                                     continue
                                 else:
                                     # Decide como vai liberar uma pagina da memoria
