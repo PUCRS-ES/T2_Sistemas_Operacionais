@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+# Autor: Vinícius Gubiani Ferreira (vini.g.fer@gmail.com)
+# Data: 19/Nov/17
+# Descricao: este arquivo visa a implementacao da simulacao de um gerenciador de
+# memoria utilizando algoritmo LRU/aleatorio. Os processos sao lidos a partir de
+# um arquivo linha a linha, mas tambem podem ser interpretados de forma aleatoria.
+
 from random import randint
 from sys import version
 
