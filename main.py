@@ -142,10 +142,6 @@ class ProcessManager():
         pagina_acessada_em[index_pagina] = self.tempo_geral
 
     def quantidade_de_enderecos_livres_na_pagina(self, index_pagina):
-        if type(index_pagina) is dict:
-            import pdb
-            pdb.set_trace()
-            a = 10
         regiao = enderecos_fisicos[index_pagina * TAMANHO_PAGINA : (index_pagina + 1) * TAMANHO_PAGINA]
         for index, valor in enumerate(regiao):
             if valor == 0:
@@ -276,9 +272,9 @@ class ProcessManager():
                                 print("---------------------------------")
                                 pagina_destino = self.proxima_pagina_disco_livre()
                                 if pagina_destino is None:
-                                    import pdb
-                                    pdb.set_trace()
-                                    a = 10
+                                    print("Sem espaço em disco para trocar de paginas")
+                                    print("\n\n\n")
+                                    continue
                                 self.move_pagina_da_memoria_para_disco(pagina_origem, pagina_destino)
                                 
                                 pagina_destino = pagina_origem
@@ -301,59 +297,74 @@ class ProcessManager():
                     
                     # Se o processo nao existe, ignora
                     if id_processo in self.processos:
-                        
-                        # Obtem a ultima pagina do processo, e quanto de memoria (bytes) ainda tem disponivel nela
-                        ultima_pagina = self.processos[id_processo].paginas[-1:][0]
-                        memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
-                        
-                        # Se a quantidade de memoria solicitada for menor que a quantidade disponível, só escreve na mesma pagina
-                        if memoria < memoria_disponivel:
-                            pos_inicial = TAMANHO_PAGINA - memoria_disponivel
-                            self.grava_processo_na_pagina(pos_inicial, memoria + pos_inicial, ultima_pagina, id_processo)
-                        else:
+
+                        numero_paginas = self.calcula_paginas_necessarias(memoria)
+                        while numero_paginas > 0:
+                            # Obtem a ultima pagina do processo, e quanto de memoria (bytes) ainda tem disponivel nela
+                            ultima_pagina = self.processos[id_processo].paginas[-1:][0]
+                            memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
                             
-                            # Se ainda tivermos algum espaco disponivel na ultima_pagina, devemos PRIMEIRO
-                            # preencher todo esse espaço, e DEPOIS escrever na nova pagina
-                            if memoria_disponivel > 0:
+                            # Se a quantidade de memoria solicitada for menor que a quantidade disponível, só escreve na mesma pagina
+                            if memoria < memoria_disponivel:
                                 pos_inicial = TAMANHO_PAGINA - memoria_disponivel
-                                self.grava_processo_na_pagina(pos_inicial, TAMANHO_PAGINA, ultima_pagina, id_processo)
+                                self.grava_processo_na_pagina(pos_inicial, memoria + pos_inicial, ultima_pagina, id_processo)
+                            else:
                                 
-                                memoria_antes = self.processos[id_processo].quantidade_memoria
-                                self.processos[id_processo].quantidade_memoria = memoria_antes + memoria_disponivel
+                                # Se ainda tivermos algum espaco disponivel na ultima_pagina, devemos PRIMEIRO
+                                # preencher todo esse espaço, e DEPOIS escrever na nova pagina
+                                if memoria_disponivel > 0:
+                                    pos_inicial = TAMANHO_PAGINA - memoria_disponivel
+                                    self.grava_processo_na_pagina(pos_inicial, TAMANHO_PAGINA, ultima_pagina, id_processo)
+                                    
+                                    memoria_antes = self.processos[id_processo].quantidade_memoria
+                                    self.processos[id_processo].quantidade_memoria = memoria_antes + memoria_disponivel
+                                    memoria = memoria - memoria_disponivel
+
+                                    # Se tinha alguma memoria sobrando, eh interessante atualizarmos as paginas necessarias
+                                    numero_paginas = self.calcula_paginas_necessarias(memoria)
                                 
-                                memoria = memoria - memoria_disponivel
-                            
-                            # Agora devemos buscar a proxima pagina livre, e gravar os dados restantes nela
-                            pagina_atual = self.proxima_pagina_livre()
-                            
-                            # Se nao houver mais paginas livres na memoria, remove uma movendo-a para o disco
-                            if pagina_atual is None:
+                                # Agora devemos buscar a proxima pagina livre, e gravar os dados restantes nela
+                                pagina_atual = self.proxima_pagina_livre()
                                 
-                                pagina_disco_livre = self.proxima_pagina_disco_livre()
-                                if pagina_disco_livre is None:
-                                    print("Não tem mais memória")
-                                    print("\n\n\n")
-                                    continue
-                                else:
-                                    # Decide como vai liberar uma pagina da memoria
-                                    if ALGORITMO_LRU:
-                                        pagina_atual = self.get_pagina_usando_least_recent_used()
+                                # Se nao houver mais paginas livres na memoria, remove uma movendo-a para o disco
+                                if pagina_atual is None:
+                                    
+                                    pagina_disco_livre = self.proxima_pagina_disco_livre()
+                                    if pagina_disco_livre is None:
+                                        print("Não tem mais memória")
+                                        print("\n\n\n")
+                                        numero_paginas += -1
+                                        continue
                                     else:
-                                        pagina_atual = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
-                                    print("---------------------------------")
-                                    print("Pagina escolhida: " + str(pagina_atual) + " (fisica)")
-                                    print("---------------------------------")
-                                    self.pretty_print_ram_E_disco("antes do page fault: ")
-                                    print("---------------------------------")
+                                        # Decide como vai liberar uma pagina da memoria
+                                        if ALGORITMO_LRU:
+                                            pagina_atual = self.get_pagina_usando_least_recent_used()
+                                        else:
+                                            pagina_atual = self.get_pagina_aleatoria(QUANTIDADE_PAGINAS)
+                                        print("---------------------------------")
+                                        print("Pagina escolhida: " + str(pagina_atual) + " (fisica)")
+                                        print("---------------------------------")
+                                        self.pretty_print_ram_E_disco("antes do page fault: ")
+                                        print("---------------------------------")
 
-                                    self.move_pagina_da_memoria_para_disco(pagina_atual, pagina_disco_livre)
-                                    self.pretty_print_ram_E_disco("depois do page fault: ")
-                                    print("---------------------------------")
+                                        self.move_pagina_da_memoria_para_disco(pagina_atual, pagina_disco_livre)
+                                        self.pretty_print_ram_E_disco("depois do page fault: ")
+                                        print("---------------------------------")
 
-                            self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
+                                if memoria <= TAMANHO_PAGINA:
+                                    self.grava_processo_na_pagina(0, memoria, pagina_atual, id_processo)
+                                else:
+                                    self.grava_processo_na_pagina(0, TAMANHO_PAGINA, pagina_atual, id_processo)
 
-                        memoria_antes = self.processos[id_processo].quantidade_memoria
-                        self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
+                                    memoria_antes = self.processos[id_processo].quantidade_memoria
+                                    self.processos[id_processo].quantidade_memoria = memoria_antes + TAMANHO_PAGINA
+                                    memoria = memoria - TAMANHO_PAGINA
+                                    numero_paginas += -1
+                                    continue
+
+                            memoria_antes = self.processos[id_processo].quantidade_memoria
+                            self.processos[id_processo].quantidade_memoria = memoria_antes + memoria
+                            numero_paginas += -1
 
                 # Permite acompanhar passo-a-passo cada acao com os processos
                 self.pretty_print_ram_E_disco()
