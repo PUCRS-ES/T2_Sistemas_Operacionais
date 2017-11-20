@@ -92,8 +92,8 @@ class ProcessManager():
 
     # retorna o indice da pagina que sera retirada da memoria quando ocorrer um page fault
     def get_pagina_usando_least_recent_used(self):
-        print("Pagina acessada em: ")
-        print(pagina_acessada_em)
+        # print("Pagina acessada em: ")
+        # print(pagina_acessada_em)
         tempo_pagina_escolhida = 999999
         index_pagina_escolhida = None
         for index, tempo_atual in enumerate(pagina_acessada_em):
@@ -148,7 +148,13 @@ class ProcessManager():
         pagina_acessada_em[index_pagina] = self.tempo_geral
 
     def quantidade_de_enderecos_livres_na_pagina(self, index_pagina):
-        regiao = enderecos_fisicos[index_pagina * TAMANHO_PAGINA : (index_pagina + 1) * TAMANHO_PAGINA]
+        if type(index_pagina) is dict:
+            index_enderecamento = index_pagina['disco']
+            enderecos = enderecos_em_disco
+        else:
+            index_enderecamento = index_pagina
+            enderecos = enderecos_fisicos
+        regiao = enderecos[index_enderecamento * TAMANHO_PAGINA : (index_enderecamento + 1) * TAMANHO_PAGINA]
         for index, valor in enumerate(regiao):
             if valor == 0:
                 return (TAMANHO_PAGINA - index)
@@ -308,6 +314,13 @@ class ProcessManager():
                         while numero_paginas > 0:
                             # Obtem a ultima pagina do processo, e quanto de memoria (bytes) ainda tem disponivel nela
                             ultima_pagina = self.processos[id_processo].paginas[-1:][0]
+                            if type(ultima_pagina) is dict:
+                                pagina_disco_livre = self.proxima_pagina_disco_livre()
+                                if pagina_disco_livre is None:
+                                    print("Não tem mais memória")
+                                    print("\n\n\n")
+                                    numero_paginas += -1
+                                    continue                                                                          
                             memoria_disponivel = self.quantidade_de_enderecos_livres_na_pagina(ultima_pagina)
                             
                             # Se a quantidade de memoria solicitada for menor que a quantidade disponível, só escreve na mesma pagina
