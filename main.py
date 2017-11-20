@@ -104,7 +104,7 @@ class ProcessManager():
 
     # escolhe uma pagina aleatoria para ser retirada da memoria no caso de um page fault
     def get_pagina_aleatoria(self, max_page_index):
-        return randint(0, max_page_index)
+        return randint(0, max_page_index - 1)
 
     def move_pagina_da_memoria_para_disco(self, index_pagina_memoria, index_pagina_disco):
         for i in range(0, TAMANHO_PAGINA):
